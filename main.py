@@ -11,8 +11,18 @@ def get_trending_topics():
     url = "https://api.twitter.com/1.1/trends/place.json?id=1"
     headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
     response = requests.get(url, headers=headers)
-    trends = [t["name"] for t in response.json()[0]["trends"]]
-    return trends
+    if response.status_code != 200:
+        print(f"Error fetching trends: {response.status_code} - {response.text}")
+        # fallback daftar topik manual supaya bot tetap jalan
+        return ["Bitcoin", "AI", "Tesla", "NBA", "Netflix"]
+    try:
+        data = response.json()
+        trends = [t["name"] for t in data[0]["trends"]]
+        return trends
+    except Exception as e:
+        print(f"Error parsing trends: {e}")
+        return ["Bitcoin", "AI", "Tesla", "NBA", "Netflix"]
+
 
 def pick_topic_by_niche(trends):
     for niche, keywords in NICHES.items():
