@@ -65,3 +65,22 @@ if __name__ == "__main__":
         tweet_with_image_url(tweet_text, image_url)
     else:
         print("Tidak ada gambar URL yang tersedia.")
+
+if __name__ == "__main__":
+    try:
+        trends = get_trending_topics()
+        topic, niche = pick_topic_by_niche(trends)
+        link = LINK_TEMPLATE.format(topic.replace(" ", "-"))
+        tweet_text = generate_tweet(topic, niche, link)
+        image_url = pick_random_image_url()
+
+        if image_url:
+            tweet_with_image_url(tweet_text, image_url)
+        else:
+            print("Tidak ada gambar URL yang tersedia.")
+    except Exception as e:
+        print("Error saat menjalankan bot:", e)
+        import traceback
+        traceback.print_exc()
+        exit(1)
+
