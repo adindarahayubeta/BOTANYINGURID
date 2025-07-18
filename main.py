@@ -4,25 +4,14 @@ import random
 import os
 from config import *
 from tweet_templates import generate_tweet
+from image_urls import IMAGE_URLS
+from io import BytesIO
 
-USED_LOG = "used.txt"
+USED_LOG = "used_images.txt"
 
 def get_trending_topics():
-    url = "https://api.twitter.com/1.1/trends/place.json?id=1"
-    headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        print(f"Error fetching trends: {response.status_code} - {response.text}")
-        # fallback daftar topik manual supaya bot tetap jalan
-        return ["Bitcoin", "AI", "Tesla", "NBA", "Netflix"]
-    try:
-        data = response.json()
-        trends = [t["name"] for t in data[0]["trends"]]
-        return trends
-    except Exception as e:
-        print(f"Error parsing trends: {e}")
-        return ["Bitcoin", "AI", "Tesla", "NBA", "Netflix"]
-
+    # Karena akses API trending terbatas, pakai daftar topik manual
+    return ["Bitcoin", "AI", "Tesla", "NBA", "Netflix"]
 
 def pick_topic_by_niche(trends):
     for niche, keywords in NICHES.items():
@@ -30,34 +19,38 @@ def pick_topic_by_niche(trends):
             for trend in trends:
                 if keyword.lower() in trend.lower():
                     return trend, niche
+    # fallback kalau tidak cocok
     return random.choice(trends), "general"
 
-def pick_random_image(path="images"):
-    all_images = [f for f in os.listdir(path) if f.lower().endswith((".jpg", ".png", ".jpeg"))]
-
+def pick_random_image_url():
     if os.path.exists(USED_LOG):
         with open(USED_LOG, "r") as f:
             used = f.read().splitlines()
     else:
         used = []
 
-    unused_images = list(set(all_images) - set(used))
+    unused = list(set(IMAGE_URLS) - set(used))
 
-    if not unused_images:
-        print("Semua gambar sudah dipakai. Reset log atau tambah gambar baru.")
+    if not unused:
+        print("Semua gambar URL sudah dipakai. Reset log untuk mulai ulang.")
         return None
 
-    chosen = random.choice(unused_images)
+    chosen = random.choice(unused)
 
     with open(USED_LOG, "a") as f:
         f.write(chosen + "\n")
 
-    return os.path.join(path, chosen)
+    return chosen
 
-def tweet_with_image(text, image_path):
+def tweet_with_image_url(text, image_url):
     auth = tweepy.OAuth1UserHandler(API_KEY, API_SECRET, ACCESS_TOKEN, ACCESS_TOKEN_SECRET)
     api = tweepy.API(auth)
-    media = api.media_upload(image_path)
+
+    # Download gambar dari URL ke memori
+    response = requests.get(image_url)
+    image_data = BytesIO(response.content)
+    media = api.media_upload(filename='temp.jpg', file=image_data)
+
     api.update_status(status=text, media_ids=[media.media_id])
     print("Tweet berhasil dikirim:", text)
 
@@ -66,9 +59,9 @@ if __name__ == "__main__":
     topic, niche = pick_topic_by_niche(trends)
     link = LINK_TEMPLATE.format(topic.replace(" ", "-"))
     tweet_text = generate_tweet(topic, niche, link)
-    image_path = pick_random_image("images")
+    image_url = pick_random_image_url()
 
-    if image_path:
-        tweet_with_image(tweet_text, image_path)
+    if image_url:
+        tweet_with_image_url(tweet_text, image_url)
     else:
-        print("Tidak ada gambar untuk dipakai.")
+        print("Tidak ada gambar URL yang tersedia.")
